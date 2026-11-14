@@ -6,7 +6,7 @@ import numpy as np
 # Add project root to sys.path so optimizers package is importable
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from optimizers import Optimizer, SGD, Momentum, NAG, AdaGrad, AdaDelta
+from optimizers import Optimizer, SGD, Momentum, NAG, AdaGrad, AdaDelta, RMSprop
 
 
 class TestOptimizerBase(unittest.TestCase):
@@ -43,6 +43,7 @@ class TestCommonOptimizerContracts(unittest.TestCase):
             ("NAG", NAG(lr=0.1, momentum=0.9)),
             ("AdaGrad", AdaGrad(lr=0.1, epsilon=1e-8)),
             ("AdaDelta", AdaDelta(rho=0.9, epsilon=1e-8)),
+            ("RMSprop", RMSprop(lr=0.01, rho=0.9, epsilon=1e-8)),
         ]
 
     def test_in_place_update(self):
@@ -312,6 +313,59 @@ class TestAdaDelta(unittest.TestCase):
         np.testing.assert_allclose(p, expected_p2, rtol=1e-7)
 
 
+class TestRMSprop(unittest.TestCase):
+    def test_invalid_parameters(self):
+        with self.assertRaises(ValueError):
+            RMSprop(rho=-0.1)
+        with self.assertRaises(ValueError):
+            RMSprop(rho=1.0)
+        with self.assertRaises(ValueError):
+            RMSprop(epsilon=0.0)
+        with self.assertRaises(ValueError):
+            RMSprop(epsilon=-1e-6)
+
+    def test_default_values(self):
+        opt = RMSprop()
+        self.assertEqual(opt.lr, 0.001)
+        self.assertEqual(opt.rho, 0.9)
+        self.assertEqual(opt.epsilon, 1e-8)
+
+    def test_numerical_accuracy(self):
+        """
+        Paper Section 4.5, Equation 18:
+        E[g^2]_t = rho * E[g^2]_{t-1} + (1 - rho) * g_t^2
+        theta_{t+1} = theta_t - (lr / sqrt(E[g^2]_t + eps)) * g_t
+        """
+        lr = 0.01
+        rho = 0.9
+        eps = 1e-8
+        opt = RMSprop(lr=lr, rho=rho, epsilon=eps)
+
+        p = np.array([2.0, -1.0], dtype=np.float64)
+        g1 = np.array([0.4, -0.2], dtype=np.float64)
+
+        # Step 1:
+        # E[g^2]_1 = (1 - 0.9) * g1^2 = 0.1 * [0.16, 0.04] = [0.016, 0.004]
+        # p_1 = p_0 - (lr / sqrt(E[g^2]_1 + eps)) * g1
+        opt.step([p], [g1])
+        expected_eg2_1 = (1.0 - rho) * (g1 ** 2)
+        expected_rms1 = np.sqrt(expected_eg2_1 + eps)
+        expected_p1 = np.array([2.0, -1.0]) - (lr / expected_rms1) * g1
+
+        np.testing.assert_allclose(opt.avg_squared_grads[0], expected_eg2_1, rtol=1e-7)
+        np.testing.assert_allclose(p, expected_p1, rtol=1e-7)
+
+        # Step 2:
+        g2 = np.array([0.1, 0.5], dtype=np.float64)
+        opt.step([p], [g2])
+        expected_eg2_2 = rho * expected_eg2_1 + (1.0 - rho) * (g2 ** 2)
+        expected_rms2 = np.sqrt(expected_eg2_2 + eps)
+        expected_p2 = expected_p1 - (lr / expected_rms2) * g2
+
+        np.testing.assert_allclose(opt.avg_squared_grads[0], expected_eg2_2, rtol=1e-7)
+        np.testing.assert_allclose(p, expected_p2, rtol=1e-7)
+
+
 class TestConvergenceOnQuadratic(unittest.TestCase):
     """Verify that all optimizers converge towards minimum of f(w) = 0.5 * w^2."""
     def test_convergence(self):
@@ -321,6 +375,7 @@ class TestConvergenceOnQuadratic(unittest.TestCase):
             ("NAG", NAG(lr=0.05, momentum=0.9)),
             ("AdaGrad", AdaGrad(lr=0.5, epsilon=1e-8)),
             ("AdaDelta", AdaDelta(rho=0.9, epsilon=1e-6)),
+            ("RMSprop", RMSprop(lr=0.05, rho=0.9, epsilon=1e-8)),
         ]
 
         for name, opt in test_cases:

@@ -19,3 +19,4 @@ from .momentum import Momentum
 from .nag import NAG
 from .adagrad import AdaGrad
 from .adadelta import AdaDelta
+from .rmsprop import RMSprop
