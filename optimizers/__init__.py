@@ -9,7 +9,11 @@ class Optimizer:
         # params is a list of NumPy arrays, grads is a list of the same length and same shapes, and the method updates params in place and returns nothing
         raise NotImplementedError("This method should be overridden by subclasses")
 
-
+    def check_length(self,params,grads):
+        if len(params)!=len(grads):
+            raise ValueError("Length of params and grads must be Equal")
+        
 
 from .sgd import SGD
 from .momentum import Momentum
+from .nag import NAG
