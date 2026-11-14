@@ -17,3 +17,4 @@ class Optimizer:
 from .sgd import SGD
 from .momentum import Momentum
 from .nag import NAG
+from .adagrad import AdaGrad
