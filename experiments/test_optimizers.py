@@ -6,7 +6,7 @@ import numpy as np
 # Add project root to sys.path so optimizers package is importable
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from optimizers import Optimizer, SGD, Momentum, NAG, AdaGrad, AdaDelta, RMSprop
+from optimizers import Optimizer, SGD, Momentum, NAG, AdaGrad, AdaDelta, RMSprop, Adam
 
 
 class TestOptimizerBase(unittest.TestCase):
@@ -44,6 +44,7 @@ class TestCommonOptimizerContracts(unittest.TestCase):
             ("AdaGrad", AdaGrad(lr=0.1, epsilon=1e-8)),
             ("AdaDelta", AdaDelta(rho=0.9, epsilon=1e-8)),
             ("RMSprop", RMSprop(lr=0.01, rho=0.9, epsilon=1e-8)),
+            ("Adam", Adam(lr=0.01, beta1=0.9, beta2=0.999, epsilon=1e-8)),
         ]
 
     def test_in_place_update(self):
@@ -366,6 +367,87 @@ class TestRMSprop(unittest.TestCase):
         np.testing.assert_allclose(p, expected_p2, rtol=1e-7)
 
 
+class TestAdam(unittest.TestCase):
+    def test_invalid_parameters(self):
+        with self.assertRaises(ValueError):
+            Adam(beta1=-0.1)
+        with self.assertRaises(ValueError):
+            Adam(beta1=1.0)
+        with self.assertRaises(ValueError):
+            Adam(beta2=-0.1)
+        with self.assertRaises(ValueError):
+            Adam(beta2=1.0)
+        with self.assertRaises(ValueError):
+            Adam(epsilon=0.0)
+        with self.assertRaises(ValueError):
+            Adam(epsilon=-1e-6)
+
+    def test_default_values(self):
+        opt = Adam()
+        self.assertEqual(opt.lr, 0.001)
+        self.assertEqual(opt.beta1, 0.9)
+        self.assertEqual(opt.beta2, 0.999)
+        self.assertEqual(opt.epsilon, 1e-8)
+        self.assertEqual(opt.t, 0)
+
+    def test_step_counter_increments(self):
+        opt = Adam()
+        p = [np.array([1.0])]
+        g = [np.array([0.1])]
+        self.assertEqual(opt.t, 0)
+        opt.step(p, g)
+        self.assertEqual(opt.t, 1)
+        opt.step(p, g)
+        self.assertEqual(opt.t, 2)
+
+    def test_numerical_accuracy(self):
+        """
+        Paper Section 4.6, Equations 19, 20, 21:
+        m_t = beta1 * m_{t-1} + (1 - beta1) * g_t
+        v_t = beta2 * v_{t-1} + (1 - beta2) * g_t^2
+        m_hat_t = m_t / (1 - beta1^t)
+        v_hat_t = v_t / (1 - beta2^t)
+        theta_{t+1} = theta_t - (lr / (sqrt(v_hat_t) + eps)) * m_hat_t
+        """
+        lr = 0.005
+        beta1 = 0.9
+        beta2 = 0.999
+        eps = 1e-8
+        opt = Adam(lr=lr, beta1=beta1, beta2=beta2, epsilon=eps)
+
+        p = np.array([1.5, -2.5], dtype=np.float64)
+        g1 = np.array([0.2, -0.4], dtype=np.float64)
+
+        # Step 1 (t=1):
+        opt.step([p], [g1])
+        t1 = 1
+        expected_m1 = (1.0 - beta1) * g1
+        expected_v1 = (1.0 - beta2) * (g1 ** 2)
+        expected_m_hat1 = expected_m1 / (1.0 - beta1 ** t1)
+        expected_v_hat1 = expected_v1 / (1.0 - beta2 ** t1)
+        expected_delta1 = - (lr / (np.sqrt(expected_v_hat1) + eps)) * expected_m_hat1
+        expected_p1 = np.array([1.5, -2.5]) + expected_delta1
+
+        np.testing.assert_allclose(opt.mt[0], expected_m1, rtol=1e-7)
+        np.testing.assert_allclose(opt.vt[0], expected_v1, rtol=1e-7)
+        np.testing.assert_allclose(p, expected_p1, rtol=1e-7)
+
+        # Step 2 (t=2):
+        g2 = np.array([-0.1, 0.3], dtype=np.float64)
+        opt.step([p], [g2])
+        t2 = 2
+        expected_m2 = beta1 * expected_m1 + (1.0 - beta1) * g2
+        expected_v2 = beta2 * expected_v1 + (1.0 - beta2) * (g2 ** 2)
+        expected_m_hat2 = expected_m2 / (1.0 - beta1 ** t2)
+        expected_v_hat2 = expected_v2 / (1.0 - beta2 ** t2)
+        expected_delta2 = - (lr / (np.sqrt(expected_v_hat2) + eps)) * expected_m_hat2
+        expected_p2 = expected_p1 + expected_delta2
+
+        np.testing.assert_allclose(opt.mt[0], expected_m2, rtol=1e-7)
+        np.testing.assert_allclose(opt.vt[0], expected_v2, rtol=1e-7)
+        np.testing.assert_allclose(p, expected_p2, rtol=1e-7)
+
+
 class TestConvergenceOnQuadratic(unittest.TestCase):
     """Verify that all optimizers converge towards minimum of f(w) = 0.5 * w^2."""
     def test_convergence(self):
@@ -376,6 +458,7 @@ class TestConvergenceOnQuadratic(unittest.TestCase):
             ("AdaGrad", AdaGrad(lr=0.5, epsilon=1e-8)),
             ("AdaDelta", AdaDelta(rho=0.9, epsilon=1e-6)),
             ("RMSprop", RMSprop(lr=0.05, rho=0.9, epsilon=1e-8)),
+            ("Adam", Adam(lr=0.05, beta1=0.9, beta2=0.999, epsilon=1e-8)),
         ]
 
         for name, opt in test_cases:
