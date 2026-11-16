@@ -184,8 +184,7 @@ Targeted sweeps evaluate the robustness and dynamics of **Momentum** and **Adam*
 
 ## 4. Key Findings 
 
-Understanding the internal mechanics of these optimizers bridges the gap between theoretical derivations and real-world model training. Below is a summary of the core findings from this project along with an engineering guide for diagnosing and resolving optimizer issues when training neural networks in Keras, PyTorch, or custom frameworks.
-
+Understanding the internal mechanics of these optimizers bridges the gap between theoretical derivations and real-world model training. Below is a summary of the core findings from this project .
 ---
 1. **Adam's Step-Size Ceiling**:
    * *Mechanism*: Because Adam divides its first moment estimate by the root of the second moment estimate ($\frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon}$), the ratio evaluates to approximately $\pm 1$ whenever gradients have consistent signs.
