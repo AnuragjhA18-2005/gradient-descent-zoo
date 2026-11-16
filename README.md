@@ -42,21 +42,50 @@ $$\theta_{t+1} = \theta_t - \frac{\eta}{\sqrt{G_t + \epsilon}} \odot g_t$$
 
 ### 5. AdaDelta — [optimizers/adadelta.py](optimizers/adadelta.py)
 Eliminates AdaGrad's continually decaying learning rate and matches parameter units by restricting gradient and update histories to exponentially decaying running averages without requiring a global learning rate:
-$$E[g^2]_t = \rho E[g^2]_{t-1} + (1 - \rho) g_t^2$$
-$$\Delta \theta_t = - \frac{\sqrt{E[\Delta \theta^2]_{t-1} + \epsilon}}{\sqrt{E[g^2]_t + \epsilon}} \odot g_t$$
-$$E[\Delta \theta^2]_t = \rho E[\Delta \theta^2]_{t-1} + (1 - \rho) \Delta \theta_t^2$$
-$$\theta_{t+1} = \theta_t + \Delta \theta_t$$
+
+$$
+E[g^2]_t = \rho E[g^2]_{t-1} + (1 - \rho) g_t^2
+$$
+
+$$
+\Delta \theta_t = - \frac{\sqrt{E[\Delta \theta^2]_{t-1} + \epsilon}}{\sqrt{E[g^2]_t + \epsilon}} \odot g_t
+$$
+
+$$
+E[\Delta \theta^2]_t = \rho E[\Delta \theta^2]_{t-1} + (1 - \rho) \Delta \theta_t^2
+$$
+
+$$
+\theta_{t+1} = \theta_t + \Delta \theta_t
+$$
 
 ### 6. RMSprop — [optimizers/rmsprop.py](optimizers/rmsprop.py)
 Resolves AdaGrad's radically diminishing learning rate by dividing the gradient by an exponentially decaying average of past squared gradients:
-$$E[g^2]_t = \rho E[g^2]_{t-1} + (1 - \rho) g_t^2$$
-$$\theta_{t+1} = \theta_t - \frac{\eta}{\sqrt{E[g^2]_t + \epsilon}} \odot g_t$$
+
+$$
+E[g^2]_t = \rho E[g^2]_{t-1} + (1 - \rho) g_t^2
+$$
+
+$$
+\theta_{t+1} = \theta_t - \frac{\eta}{\sqrt{E[g^2]_t + \epsilon}} \odot g_t
+$$
 
 ### 7. Adam (Adaptive Moment Estimation) — [optimizers/adam.py](optimizers/adam.py)
 Maintains exponentially decaying averages of past gradients $m_t$ (first moment) and past squared gradients $v_t$ (second moment), incorporating dynamic bias-correction factors to compensate for zero-initialization:
-$$m_t = \beta_1 m_{t-1} + (1 - \beta_1) g_t, \quad v_t = \beta_2 v_{t-1} + (1 - \beta_2) g_t^2$$
-$$\hat{m}_t = \frac{m_t}{1 - \beta_1^t}, \quad \hat{v}_t = \frac{v_t}{1 - \beta_2^t}$$
-$$\theta_{t+1} = \theta_t - \frac{\eta}{\sqrt{\hat{v}_t} + \epsilon} \odot \hat{m}_t$$
+
+$$
+m_t = \beta_1 m_{t-1} + (1 - \beta_1) g_t, \quad v_t = \beta_2 v_{t-1} + (1 - \beta_2) g_t^2
+$$
+
+$$
+\hat{m}_t = \frac{m_t}{1 - \beta_1^t}, \quad \hat{v}_t = \frac{v_t}{1 - \beta_2^t
+}
+$$
+
+$$
+\theta_{t+1} = \theta_t - \frac{\eta}{\sqrt{\hat{v}_t} + \epsilon} \odot \hat{m}_t
+$$
+
 
 ---
 
